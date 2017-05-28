@@ -1,0 +1,17 @@
+{
+  "name": "JackaBot",
+  "version": "0.0.1",
+  "description": "bot for slack. I mean discord. The chat app, not the draconequus",
+  "readme": "README.md",
+  "maintainers": [],
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jackarunda/jackabot"
+  },
+  "license": "GPL-2.0",
+  "dependencies": {
+    "discord.js": "^11.1.0"
+  },
+  "main": "index.js"
+}
