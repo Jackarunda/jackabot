@@ -9,11 +9,11 @@ var StaticResponses={
 	"ping":"pong",
 	"wew":"lads",
 	"bill clinton":"is a rapist",
-	"under budget":"and ahead of schedule"
+	"under budget":"and ahead of schedule",
+	"if you let the govt break the law during emergencies":"then they will create emergencies to break the law"
 }
 var ContainedResponses={
-	"zanzibar":"*last resort",
-	"tarts play with us":"Space Engineers\nWarframe\nArma III\nBattlefield 4\nGarry's Mod\nElder Scrolls Online\nMinecraft\nFractured Space\nRocket League\nRobocraft\nHalo Wars\nTeam Fortress 2\nHalo 3 (dewrito)\nThe Forest\nInsurgency\nSynergy (HL2)"
+	"zanzibar":"*last resort"
 }
 /*---------- Runtime Vars -------------*/
 var CurrentChannel=null
@@ -36,12 +36,8 @@ function print(){
 		}
 	}
 }
-function Loop(obj,func){
-	for(var key in obj){
-		if(obj.hasOwnProperty(key)){
-			func(key,obj[key])
-		}
-	}
+function RandomInt(min,max){
+	return Math.floor(Math.random()*(max-min)+min)
 }
 function WriteMsg(msg){
 	if(!CurrentChannel){return}
@@ -84,20 +80,49 @@ function WarframeWiki(txt){
 	}
 	return false
 }
+/*-------------- Fitness Reminder --------------*/
+function GenerateNofifyTime(timeslot){
+	var Time=new Date()
+	var CurYear=Time.getFullYear(),CurMonth=Time.getMonth(),CurHour=Time.getDate()
+	switch(timeslot){
+		case "morning":
+			return new Date(CurYear,CurMonth,CurDay,RandomInt(10,14))
+		case "evening":
+			return new Date(CurYear,CurMonth,CurDay,RandomInt(14,21))
+	}
+}
+var FitnessReminder={
+	TartsNotified:false,
+	TartsNotifyTime:0,
+	JackNotified:false,
+	JackNotifyTime:0,
+	CurrentTimeslot:"morning",
+	Think:(curTime)=>{
+		print("hi",this)
+		var CurTimeSlot=curTime.getHours()<12 ? "morning" : "evening"
+		//if(FitnessReminder.
+	}
+}
+/*-------------- Main Think ---------------*/
+function Think(){
+	var CurTime=new Date()
+	FitnessReminder.Think(CurTime())
+}
 /*--------------- Hooks ----------------*/
 Client.on("ready",function(){
 	print("BOT READY")
+	setInterval(Think,1000)
 })
 Client.on('message',function(msg){
 	CurrentChannel=msg.channel
 	var txt=msg.content,lowerTxt=msg.content.toLowerCase()
-	Loop(StaticResponses,function(key,value){
+	StaticResponses.forEach(function(value,key){
 		if(lowerTxt==key){
 			WriteMsg(value)
 			return
 		}
 	})
-	Loop(ContainedResponses,function(key,value){
+	ContainedResponses.forEach(function(value,key){
 		if(lowerTxt.indexOf(key)!=-1){
 			WriteMsg(value)
 			return
@@ -105,6 +130,7 @@ Client.on('message',function(msg){
 	})
 	if(WarframeWiki(txt)){return}
 })
+print("fucking hello")
 Client.login("MzE4NDY1MDM5NDk5NjU3MjE5.DAyxMA.lqcOWY3aYk_hlNC9ycbWzi2Cj3U")
 /*----------- Reference Data ------------*/
 /*-
