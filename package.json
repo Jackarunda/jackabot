@@ -11,7 +11,7 @@
   },
   "license": "GPL-2.0",
   "dependencies": {
-    "discord.js": "^11.1.0",
+    "discord.js": "^11.6.4",
     "promise": "^7.1.1"
   },
   "main": "index.js"
