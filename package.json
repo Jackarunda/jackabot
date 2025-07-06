@@ -1,18 +1,24 @@
 {
-  "name": "JackaBot",
-  "version": "0.0.1",
-  "description": "bot for slack. I mean discord. The chat app, not the draconequus",
-  "readme": "README.md",
-  "maintainers": [],
-  "author": "",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Jackarunda/jackabot"
+  "name": "jackabot",
+  "version": "1.0.0",
+  "description": "The discord bot for JChat",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
-  "license": "GPL-2.0",
+  "keywords": [
+    "discord",
+    "bot",
+    "jackabot"
+  ],
+  "author": "Jackarunda",
+  "license": "MIT",
   "dependencies": {
-    "discord.js": "^11.1.0",
-    "promise": "^7.1.1"
+    "discord.js": "^14.14.1",
+    "ollama": "^0.5.16"
   },
-  "main": "index.js"
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
 }
