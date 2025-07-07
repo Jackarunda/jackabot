@@ -40,7 +40,7 @@ const initialPrompt = {
 	`
 }
 const history = [ initialPrompt ]
-const stupidMode = true
+const stupidMode = false
 let isThinking = false
 const allowedChannels = ["general-dev-chat"]
 client.once("ready", async () => {
