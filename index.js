@@ -35,7 +35,7 @@ const initialPrompt = {
 const history = [ initialPrompt ]
 const stupidMode = false
 const model = stupidMode ? "deepseek-r1:7b" : "deepseek-r1:14b"
-const allowedChannels = ["general-dev-chat"]
+const allowedChannels = ["general-dev-chat", "bot-testing"]
 // runtime vars
 const STATE_BROKEN = -1, STATE_INITIALIZING = 0, STATE_IDLE = 1, STATE_THINKING = 2, STATE_REPLYING = 3
 let state = STATE_INITIALIZING
