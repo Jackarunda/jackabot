@@ -22,6 +22,11 @@ class Logger {
     writeLog(logEntry) {
         const logFilePath = this.getLogFilePath()
         try {
+            // Create logs directory if it doesn't exist
+            if (!fs.existsSync(this.logsDir)) {
+                fs.mkdirSync(this.logsDir, { recursive: true })
+            }
+            
             let logs = []
             if (fs.existsSync(logFilePath)) {
                 const fileContent = fs.readFileSync(logFilePath, "utf8")
