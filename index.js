@@ -40,9 +40,9 @@ const initialPrompt = {
 	`
 }
 const history = [ initialPrompt ]
-const stupidMode = false
+const stupidMode = true
 let isThinking = false
-const allowedChannels = ["general-dev-chat", "bot-testing"]
+const allowedChannels = ["general-dev-chat"]
 client.once("ready", async () => {
     try {
         await ollama.chat({
@@ -62,7 +62,7 @@ client.once("ready", async () => {
 })
 async function getAIResponse(message, channelName, userName, timestamp) {
     const startTime = Date.now()
-    const model = stupidMode ? "deepseek-r1:1.5b" : "deepseek-r1:14b"
+    const model = stupidMode ? "deepseek-r1:7b" : "deepseek-r1:14b"
     print(`[${timestamp}] ${userName} in #${channelName}: ${message}`)
     try {
 		history.push({
@@ -85,6 +85,10 @@ async function getAIResponse(message, channelName, userName, timestamp) {
         const thinkMatch = fullResponse.match(/<think>(.*?)<\/think>/s)
         const thoughts = thinkMatch ? thinkMatch[1].trim() : null
         const spokenResponse = fullResponse.replace(/<think>.*?<\/think>/s, "").trim()
+		history.push({ // this is important for making sure the AI doesn't have cataclysmic levels of dementia
+			role: "assistant",
+			content: spokenResponse || fullResponse
+		})
         return {
             thoughts: thoughts,
             response: spokenResponse || fullResponse,
@@ -105,9 +109,9 @@ async function getAIResponse(message, channelName, userName, timestamp) {
     }
 }
 client.on("messageCreate", async message => {
-    if (message.author.bot) return
-    print(`> ${message.channel.name} ${message.content}`)
     if (!allowedChannels.includes(message.channel.name)) return
+	if (message.author.bot) return
+	print(`> ${message.channel.name} ${message.content}`)
     let logEntry = logger.createLogEntry(message)
     let getInvolved = message.content.toLowerCase().includes("cortana")
 
@@ -138,7 +142,7 @@ client.on("messageCreate", async message => {
             if (aiResult) {
                 print(`${aiResult.response} (${aiResult.duration}ms)`)
                 logEntry = logger.createLogEntry(message, aiResult.thoughts, aiResult.response, aiResult.duration, aiResult.model)
-                if (aiResult.response != "[no comment]" && getInvolved) {
+                if (aiResult.response != "[no comment]") {
                     message.reply(aiResult.response).catch(error => {
                         console.error("Error sending message:", error.message)
                     })
