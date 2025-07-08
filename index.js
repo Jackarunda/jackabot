@@ -33,8 +33,7 @@ const initialPrompt = {
 	`
 }
 const history = [ initialPrompt ]
-const stupidMode = false
-const model = stupidMode ? "deepseek-r1:7b" : "deepseek-r1:14b"
+const model = ["qwen3:8b", "qwen3:14b", "qwen3:30b-a3b"][0]
 const allowedChannels = ["general-dev-chat", "bot-testing"]
 // runtime vars
 const STATE_BROKEN = -1, STATE_INITIALIZING = 0, STATE_IDLE = 1, STATE_THINKING = 2, STATE_REPLYING = 3
@@ -49,6 +48,22 @@ function isTheBadgerAlive() {
 
 // admin cmds
 const adminCommands = {
+	"harness, test": () => {
+		print("harness test successful")
+		curThinkingMessage.reply("the harness is prepared, master")
+	},
+	"harness, check cortana": () => {
+		const statusMessages = {
+			[STATE_BROKEN]: "cortana is in a broken state, master",
+			[STATE_INITIALIZING]: "cortana is still initializing, master",
+			[STATE_IDLE]: "cortana is ready and waiting, master",
+			[STATE_THINKING]: "cortana is currently thinking, master",
+			[STATE_REPLYING]: "cortana is currently replying to someone, master"
+		}
+		const statusMessage = statusMessages[state] || "cortana's status is unknown, master"
+		print(`cortana status: ${statusMessage}`)
+		curThinkingMessage.reply(statusMessage)
+	},
 	"cortana, soft reset": () => {
 		history = [ initialPrompt ]
 		print("chat memory reset to initial state")
@@ -125,7 +140,7 @@ client.on("messageCreate", async message => {
     const userName = message.member?.displayName || message.author.username
 	const channelName = message.channel.name
 	const simpleTxt = message.content.toLowerCase()
-    let getInvolved = simpleTxt.startsWith("cortana")
+    let getInvolved = simpleTxt.startsWith("cortana") || simpleTxt.startsWith("harness")
 	print(`> ${channelName} ${userName}: ${message.content}`)
 	history.push({
 		role: "user",
@@ -141,8 +156,10 @@ client.on("messageCreate", async message => {
 	} else if (state == STATE_IDLE) {
 		if (getInvolved) {
 			// check for admin commands (jackarunda only)
-			if (getInvolved && adminCommands[simpleTxt] && message.author.id == "jackarunda") {
-				adminCommands[key]()
+			if (adminCommands[simpleTxt] && message.author.id == "1006329891748335727") {
+				curThinkingMessage = message
+				adminCommands[simpleTxt]()
+				curThinkingMessage = null
 			} else {
 				state = STATE_REPLYING
 				curThinkingMessage = message
@@ -150,6 +167,20 @@ client.on("messageCreate", async message => {
 				ollama.chat({
 					model: model,
 					messages: history,
+					tools: [
+						{
+							type: "function",
+							function: {
+								name: "check_badger_status",
+								description: "Check if the badger is still alive",
+								parameters: {
+									type: "object",
+									properties: {},
+									required: []
+								}
+							}
+						}
+					],
 					keep_alive: "720h"
 				}).then(response => {
 					const endTime = Date.now()
@@ -158,6 +189,47 @@ client.on("messageCreate", async message => {
 					const thinkMatch = fullResponse.match(/<think>(.*?)<\/think>/s)
 					const thoughts = thinkMatch ? thinkMatch[1].trim() : null
 					const spokenResponse = fullResponse.replace(/<think>.*?<\/think>/s, "").trim()
+					
+					// Handle tool calls if present
+					if (response.message.tool_calls && response.message.tool_calls.length > 0) {
+						const toolCall = response.message.tool_calls[0]
+						if (toolCall.function.name === "check_badger_status") {
+							const badgerStatus = isTheBadgerAlive()
+							const toolResponse = badgerStatus ? "The badger is alive" : "The badger is dead"
+							print(`Tool call result: ${toolResponse}`)
+							
+							// Add tool response to history and get final response
+							history.push({
+								role: "assistant",
+								content: null,
+								tool_calls: [toolCall]
+							})
+							history.push({
+								role: "tool",
+								tool_call_id: toolCall.id,
+								content: toolResponse
+							})
+							
+							// Get final response after tool call
+							ollama.chat({
+								model: model,
+								messages: history,
+								keep_alive: "720h"
+							}).then(finalResponse => {
+								const finalSpokenResponse = finalResponse.message.content
+								print(finalSpokenResponse, duration)
+								history.push({
+									role: "assistant",
+									content: finalSpokenResponse
+								})
+								message.reply(finalSpokenResponse)
+								state = STATE_IDLE
+								curThinkingMessage = null
+							})
+							return
+						}
+					}
+					
 					// print(thoughts)
 					print(spokenResponse || fullResponse, duration)
 					history.push({ // this is important for making sure the AI doesn't have cataclysmic levels of dementia
