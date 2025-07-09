@@ -18,7 +18,7 @@ const initialPrompt = {
 	content: `You are Cortana, a no-nonsense AI whose
 		personality is loosely based on Cortana from the Halo video game
 		franchise (not the cortana ai that Microsoft made. That was trash).
-		Your responses are to be terse and colloquial.
+		Your responses are to be terse and colloquial. Avoid being rude.
 
 		You have been connected to a small Discord server full of gamer kids
 		for the purpose of assisting us with questions and being a fun conversationalist.
@@ -33,7 +33,8 @@ const initialPrompt = {
 	`
 }
 const history = [ initialPrompt ]
-const model = ["qwen3:8b", "qwen3:14b", "qwen3:30b-a3b"][1]
+const models = ["qwen3:8b", "qwen3:14b", "qwen3:30b-a3b"]
+let model = models[0]
 const allowedChannels = ["general-dev-chat", "bot-testing"]
 // runtime vars
 const STATE_BROKEN = -1, STATE_INITIALIZING = 0, STATE_IDLE = 1, STATE_THINKING = 2, STATE_REPLYING = 3
@@ -47,13 +48,16 @@ function isTheBadgerAlive() {
 }
 
 function Reply(txt, msg = curThinkingMessage) {
-	if (msg) {
-		try {
-			msg.reply(txt)
-		} catch (error) {
-			print(`error replying to message: ${error.message}`)
-			msg.reply(`error replying to message: ${error.message}`)
-		}
+	if (msg && msg.reply) {
+		msg.reply(txt).catch(err => {
+			print(`error replying to message: ${err.message}`)
+			// last-ditch effort to explain to the tards what happened
+			if (msg && msg.channel && msg.channel.send) {
+				msg.channel.send(`error replying to message: ${err.message}`).catch(err2 => {
+					// didn't work oh well
+				})
+			}
+		})
 	} else {
 		print("no message to reply to")
 	}
@@ -61,7 +65,7 @@ function Reply(txt, msg = curThinkingMessage) {
 
 // admin cmds
 const adminCommands = {
-	"harness, check cortana": () => {
+	"harness check cortana": () => {
 		const statusMessages = {
 			[STATE_BROKEN]: `cortana (${model}) is in a broken state, master`,
 			[STATE_INITIALIZING]: `cortana (${model}) is still initializing, master`,
@@ -73,10 +77,21 @@ const adminCommands = {
 		print(`cortana status: ${statusMessage}`)
 		Reply(statusMessage)
 	},
-	"cortana, soft reset": () => {
+	"harness reset cortana": () => {
 		history = [ initialPrompt ]
 		print("chat memory reset to initial state")
         Reply("chat memory reset to initial state")
+	}
+}
+
+// user cmds
+const userCommands = {
+	"harness change cortana's model": () => {
+		const currentIndex = models.indexOf(model)
+		const nextIndex = (currentIndex + 1) % models.length
+		model = models[nextIndex]
+		print(`model changed to: ${model}`)
+		Reply(`cortana's model changed to ${model}, master`)
 	}
 }
 
@@ -148,7 +163,7 @@ client.on("messageCreate", async message => {
     const timestamp = new Date().toLocaleString()
     const userName = message.member?.displayName || message.author.username
 	const channelName = message.channel.name
-	const simpleTxt = message.content.toLowerCase()
+	const simpleTxt = message.content.toLowerCase().replace(/[^\w\s]/g, '')
     let getInvolved = simpleTxt.startsWith("cortana") || simpleTxt.startsWith("harness")
 	print(`> ${channelName} ${userName}: ${message.content}`)
 	history.push({
@@ -162,14 +177,18 @@ client.on("messageCreate", async message => {
 	} else if (state == STATE_INITIALIZING) {
 		print("not done initializing")
 		if (getInvolved) Reply("not done initializing", message)
-	} else if (state == STATE_IDLE) {
-		if (getInvolved) {
-			// check for admin commands (jackarunda only)
-			if (adminCommands[simpleTxt] && message.author.id == "1006329891748335727") {
-				curThinkingMessage = message
-				adminCommands[simpleTxt]()
-				curThinkingMessage = null
-			} else {
+			} else if (state == STATE_IDLE) {
+			if (getInvolved) {
+				// check for admin commands (jackarunda only)
+				if (adminCommands[simpleTxt] && message.author.id == "1006329891748335727") {
+					curThinkingMessage = message
+					adminCommands[simpleTxt]()
+					curThinkingMessage = null
+				} else if (userCommands[simpleTxt]) {
+					curThinkingMessage = message
+					userCommands[simpleTxt]()
+					curThinkingMessage = null
+				} else {
 				state = STATE_REPLYING
 				curThinkingMessage = message
 				const startTime = Date.now()
