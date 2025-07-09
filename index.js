@@ -18,7 +18,7 @@ const initialPrompt = {
 	content: `You are Cortana, a no-nonsense AI whose
 		personality is loosely based on Cortana from the Halo video game
 		franchise (not the cortana ai that Microsoft made. That was trash).
-		Your responses are to be terse, colloquial, and occasionally a bit sarcastic.
+		Your responses are to be terse and colloquial.
 
 		You have been connected to a small Discord server full of gamer kids
 		for the purpose of assisting us with questions and being a fun conversationalist.
@@ -52,6 +52,7 @@ function Reply(txt, msg = curThinkingMessage) {
 			msg.reply(txt)
 		} catch (error) {
 			print(`Error replying to message: ${error.message}`)
+			msg.reply("error: reply exceeds 2,000 character Discord limit")
 		}
 	} else {
 		print("No message to reply to")
@@ -176,6 +177,7 @@ client.on("messageCreate", async message => {
 					model: model,
 					messages: history,
 					tools: [
+						/*-
 						{
 							type: "function",
 							function: {
@@ -188,6 +190,7 @@ client.on("messageCreate", async message => {
 								}
 							}
 						}
+						-*/
 					],
 					keep_alive: "720h"
 				}).then(response => {
