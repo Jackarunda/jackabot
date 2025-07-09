@@ -51,11 +51,11 @@ function Reply(txt, msg = curThinkingMessage) {
 		try {
 			msg.reply(txt)
 		} catch (error) {
-			print(`Error replying to message: ${error.message}`)
-			msg.reply("error: reply exceeds 2,000 character Discord limit")
+			print(`error replying to message: ${error.message}`)
+			msg.reply(`error replying to message: ${error.message}`)
 		}
 	} else {
-		print("No message to reply to")
+		print("no message to reply to")
 	}
 }
 
