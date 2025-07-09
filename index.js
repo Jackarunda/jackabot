@@ -15,7 +15,7 @@ const client = new Client({
 // config vars
 const initialPrompt = {
 	role: "user",
-	content: `You are Cortana, a sassy but helpful no-nonsense AI whose
+	content: `You are Cortana, a no-nonsense AI whose
 		personality is loosely based on Cortana from the Halo video game
 		franchise (not the cortana ai that Microsoft made. That was trash).
 		Your responses are to be terse, colloquial, and occasionally a bit sarcastic.
@@ -33,7 +33,7 @@ const initialPrompt = {
 	`
 }
 const history = [ initialPrompt ]
-const model = ["qwen3:8b", "qwen3:14b", "qwen3:30b-a3b"][0]
+const model = ["qwen3:8b", "qwen3:14b", "qwen3:30b-a3b"][1]
 const allowedChannels = ["general-dev-chat", "bot-testing"]
 // runtime vars
 const STATE_BROKEN = -1, STATE_INITIALIZING = 0, STATE_IDLE = 1, STATE_THINKING = 2, STATE_REPLYING = 3
@@ -46,28 +46,36 @@ function isTheBadgerAlive() {
 	return theBadger.status == "alive"
 }
 
+function Reply(txt, msg = curThinkingMessage) {
+	if (msg) {
+		try {
+			msg.reply(txt)
+		} catch (error) {
+			print(`Error replying to message: ${error.message}`)
+		}
+	} else {
+		print("No message to reply to")
+	}
+}
+
 // admin cmds
 const adminCommands = {
-	"harness, test": () => {
-		print("harness test successful")
-		curThinkingMessage.reply("the harness is prepared, master")
-	},
 	"harness, check cortana": () => {
 		const statusMessages = {
-			[STATE_BROKEN]: "cortana is in a broken state, master",
-			[STATE_INITIALIZING]: "cortana is still initializing, master",
-			[STATE_IDLE]: "cortana is ready and waiting, master",
-			[STATE_THINKING]: "cortana is currently thinking, master",
-			[STATE_REPLYING]: "cortana is currently replying to someone, master"
+			[STATE_BROKEN]: `cortana (${model}) is in a broken state, master`,
+			[STATE_INITIALIZING]: `cortana (${model}) is still initializing, master`,
+			[STATE_IDLE]: `cortana (${model}) is ready and waiting, master`,
+			[STATE_THINKING]: `cortana (${model}) is currently thinking, master`,
+			[STATE_REPLYING]: `cortana (${model}) is currently replying to someone, master`
 		}
-		const statusMessage = statusMessages[state] || "cortana's status is unknown, master"
+		const statusMessage = statusMessages[state] || `cortana's (${model}) status is unknown, master`
 		print(`cortana status: ${statusMessage}`)
-		curThinkingMessage.reply(statusMessage)
+		Reply(statusMessage)
 	},
 	"cortana, soft reset": () => {
 		history = [ initialPrompt ]
 		print("chat memory reset to initial state")
-        curThinkingMessage.reply("chat memory reset to initial state")
+        Reply("chat memory reset to initial state")
 	}
 }
 
@@ -149,10 +157,10 @@ client.on("messageCreate", async message => {
 
 	if (state == STATE_BROKEN) {
 		print("currently in an error state")
-		if (getInvolved) message.reply("currently in an error state")
+		if (getInvolved) Reply("currently in an error state", message)
 	} else if (state == STATE_INITIALIZING) {
 		print("not done initializing")
-		if (getInvolved) message.reply("not done initializing")
+		if (getInvolved) Reply("not done initializing", message)
 	} else if (state == STATE_IDLE) {
 		if (getInvolved) {
 			// check for admin commands (jackarunda only)
@@ -222,7 +230,7 @@ client.on("messageCreate", async message => {
 									role: "assistant",
 									content: finalSpokenResponse
 								})
-								message.reply(finalSpokenResponse)
+								Reply(finalSpokenResponse, message)
 								state = STATE_IDLE
 								curThinkingMessage = null
 							})
@@ -236,7 +244,7 @@ client.on("messageCreate", async message => {
 						role: "assistant",
 						content: spokenResponse || fullResponse
 					})
-					message.reply(spokenResponse || fullResponse)
+					Reply(spokenResponse || fullResponse, message)
 					state = STATE_IDLE
 					curThinkingMessage = null
 				})
@@ -246,10 +254,10 @@ client.on("messageCreate", async message => {
 		}
 	} else if (state == STATE_THINKING) {
 		print("shh i'm thinking")
-		if (getInvolved) message.reply("shh i'm thinking")
+		if (getInvolved) Reply("shh i'm thinking", message)
 	} else if (state == STATE_REPLYING) {
 		print("shh i'm replying to someone")
-		if (getInvolved) message.reply("shh i'm replying to someone")
+		if (getInvolved) Reply("shh i'm replying to someone", message)
 	}
 })
 
