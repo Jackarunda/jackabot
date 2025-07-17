@@ -48,19 +48,68 @@ function isTheBadgerAlive() {
 }
 
 // todo: changing model doesn't work
-// todo: make the check command user-usable, not admin
+// todo: make sure errors don't get into her chat log
+// todo: make sure responses get into the chat log even if discord errors
 
 function Reply(txt, msg = curThinkingMessage) {
 	if (msg && msg.reply) {
-		msg.reply(txt).catch(err => {
-			print(`error replying to message: ${err.message}`)
-			// last-ditch effort to explain to the tards what happened
-			if (msg && msg.channel && msg.channel.send) {
-				msg.channel.send(`error replying to message: ${err.message}`).catch(err2 => {
-					// didn't work oh well
-				})
+		// Split text if it's longer than 2000 characters
+		const maxLength = 2000
+		const messages = []
+		
+		if (txt.length <= maxLength) {
+			messages.push(txt)
+		} else {
+			// Split into chunks, trying to break at word boundaries
+			let remaining = txt
+			while (remaining.length > 0) {
+				let chunk = remaining.substring(0, maxLength)
+				
+				// If this isn't the last chunk, try to break at a word boundary
+				if (remaining.length > maxLength) {
+					const lastSpace = chunk.lastIndexOf(' ')
+					if (lastSpace > maxLength * 0.8) { // Only break at space if it's not too early in the chunk
+						chunk = chunk.substring(0, lastSpace)
+						remaining = remaining.substring(lastSpace + 1)
+					} else {
+						remaining = remaining.substring(maxLength)
+					}
+				} else {
+					remaining = ''
+				}
+				
+				messages.push(chunk)
 			}
-		})
+		}
+		
+		// Send messages sequentially
+		const sendMessages = async (index = 0) => {
+			if (index >= messages.length) return
+			
+			try {
+				if (index === 0) {
+					// First message as a reply
+					await msg.reply(messages[index])
+				} else {
+					// Subsequent messages as regular channel messages
+					await msg.channel.send(messages[index])
+				}
+				print(messages[index])
+				
+				// Send next message after a short delay
+				setTimeout(() => sendMessages(index + 1), 100)
+			} catch (err) {
+				print(`error sending message ${index + 1}: ${err.message}`)
+				// last-ditch effort to explain to the tards what happened
+				if (msg && msg.channel && msg.channel.send) {
+					msg.channel.send(`error sending message: ${err.message}`).catch(err2 => {
+						// didn't work oh well
+					})
+				}
+			}
+		}
+		
+		sendMessages()
 	} else {
 		print("no message to reply to")
 	}
@@ -68,6 +117,15 @@ function Reply(txt, msg = curThinkingMessage) {
 
 // admin cmds
 const adminCommands = {
+	"harness reset cortana": () => {
+		history = [ initialPrompt ]
+		print("chat memory reset to initial state")
+        Reply("chat memory reset to initial state")
+	}
+}
+
+// user cmds
+const userCommands = {
 	"harness check cortana": () => {
 		const statusMessages = {
 			[STATE_BROKEN]: `cortana (${model}) is in a broken state, master`,
@@ -80,15 +138,6 @@ const adminCommands = {
 		print(`cortana status: ${statusMessage}`)
 		Reply(statusMessage)
 	},
-	"harness reset cortana": () => {
-		history = [ initialPrompt ]
-		print("chat memory reset to initial state")
-        Reply("chat memory reset to initial state")
-	}
-}
-
-// user cmds
-const userCommands = {
 	"harness change cortana's model": () => {
 		const currentIndex = models.indexOf(model)
 		const nextIndex = (currentIndex + 1) % models.length
@@ -175,10 +224,8 @@ client.on("messageCreate", async message => {
 	})
 
 	if (state == STATE_BROKEN) {
-		print("currently in an error state")
 		if (getInvolved) Reply("currently in an error state", message)
 	} else if (state == STATE_INITIALIZING) {
-		print("not done initializing")
 		if (getInvolved) Reply("not done initializing", message)
 			} else if (state == STATE_IDLE) {
 			if (getInvolved) {
@@ -250,7 +297,6 @@ client.on("messageCreate", async message => {
 								keep_alive: "720h"
 							}).then(finalResponse => {
 								const finalSpokenResponse = finalResponse.message.content
-								print(finalSpokenResponse, duration)
 								history.push({
 									role: "assistant",
 									content: finalSpokenResponse
@@ -264,7 +310,6 @@ client.on("messageCreate", async message => {
 					}
 					
 					// print(thoughts)
-					print(spokenResponse || fullResponse, duration)
 					history.push({ // this is important for making sure the AI doesn't have cataclysmic levels of dementia
 						role: "assistant",
 						content: spokenResponse || fullResponse
@@ -278,10 +323,8 @@ client.on("messageCreate", async message => {
 			// do nothing i guess
 		}
 	} else if (state == STATE_THINKING) {
-		print("shh i'm thinking")
 		if (getInvolved) Reply("shh i'm thinking", message)
 	} else if (state == STATE_REPLYING) {
-		print("shh i'm replying to someone")
 		if (getInvolved) Reply("shh i'm replying to someone", message)
 	}
 })
